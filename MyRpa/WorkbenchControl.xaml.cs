@@ -103,6 +103,9 @@ namespace MyRpa
                     case SubmitFormAction submitAction:
                         submitAction.FormElement = _selectedElement;
                         break;
+                    case ExecuteJavaScriptAction jsAction:
+                        jsAction.TargetElement = _selectedElement;
+                        break;
                 }
                 
                 // 更新属性面板
@@ -229,6 +232,16 @@ namespace MyRpa
                     
                 case SubmitFormAction submitAction:
                     AddElementProperty("表单元素", submitAction.FormElement);
+                    break;
+                    
+                case ExecuteJavaScriptAction jsAction:
+                    AddElementProperty("目标元素", jsAction.TargetElement);
+                    AddScriptProperty("JavaScript脚本", jsAction.ScriptTemplate, value => jsAction.ScriptTemplate = value);
+                    AddTextBoxProperty("输入参数", jsAction.InputParameter, value => jsAction.InputParameter = value);
+                    if (!string.IsNullOrEmpty(jsAction.Result))
+                    {
+                        AddReadOnlyTextProperty("执行结果", jsAction.Result);
+                    }
                     break;
             }
         }
@@ -410,6 +423,9 @@ namespace MyRpa
                                 case SubmitFormAction submitAction:
                                     submitAction.FormElement = _selectedElement;
                                     break;
+                                case ExecuteJavaScriptAction jsAction:
+                                    jsAction.TargetElement = _selectedElement;
+                                    break;
                             }
                         }
                         
@@ -523,6 +539,20 @@ namespace MyRpa
             var action = new SubmitFormAction();
             if (_selectedElement != null)
                 action.FormElement = _selectedElement;
+                
+            _workflowManager.AddAction(action);
+            UpdateActionsList();
+            
+            // 选中新添加的项
+            lstActions.SelectedIndex = _workflowManager.Actions.Count - 1;
+        }
+        
+        // 添加JavaScript操作
+        private void btnAddJavaScript_Click(object sender, RoutedEventArgs e)
+        {
+            var action = new ExecuteJavaScriptAction();
+            if (_selectedElement != null)
+                action.TargetElement = _selectedElement;
                 
             _workflowManager.AddAction(action);
             UpdateActionsList();
@@ -732,6 +762,9 @@ namespace MyRpa
                         case SubmitFormAction submitAction:
                             submitAction.FormElement = _selectedElement;
                             break;
+                        case ExecuteJavaScriptAction jsAction:
+                            jsAction.TargetElement = _selectedElement;
+                            break;
                     }
                     
                     // 更新属性面板
@@ -781,6 +814,50 @@ namespace MyRpa
             _selectedElements.Clear();
             UpdateElementsList();
             _selectedElement = null;
+        }
+        
+        // 添加脚本编辑属性
+        private void AddScriptProperty(string label, string scriptContent, Action<string> setter)
+        {
+            var container = new StackPanel { Margin = new Thickness(0, 0, 0, 10) };
+            container.Children.Add(new TextBlock { Text = label, Margin = new Thickness(0, 0, 0, 3) });
+            
+            var textBox = new TextBox 
+            { 
+                Text = scriptContent ?? "",
+                Padding = new Thickness(3),
+                AcceptsReturn = true,
+                TextWrapping = TextWrapping.Wrap,
+                VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+                Height = 200,
+                FontFamily = new FontFamily("Consolas, Courier New, monospace"),
+                Tag = setter
+            };
+            
+            container.Children.Add(textBox);
+            propertyPanel.Children.Add(container);
+        }
+        
+        // 添加只读文本属性
+        private void AddReadOnlyTextProperty(string label, string content)
+        {
+            var container = new StackPanel { Margin = new Thickness(0, 0, 0, 10) };
+            container.Children.Add(new TextBlock { Text = label, Margin = new Thickness(0, 0, 0, 3) });
+            
+            var textBox = new TextBox 
+            { 
+                Text = content ?? "",
+                Padding = new Thickness(3),
+                AcceptsReturn = true,
+                TextWrapping = TextWrapping.Wrap,
+                VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+                Height = 100,
+                IsReadOnly = true,
+                Background = Brushes.LightYellow
+            };
+            
+            container.Children.Add(textBox);
+            propertyPanel.Children.Add(container);
         }
         
         #endregion

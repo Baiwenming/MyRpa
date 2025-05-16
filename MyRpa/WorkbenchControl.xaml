@@ -21,6 +21,7 @@
             <Button x:Name="btnAddInput" Content="输入操作" Click="btnAddInput_Click" Padding="5,2"/>
             <Button x:Name="btnAddWait" Content="等待操作" Click="btnAddWait_Click" Padding="5,2"/>
             <Button x:Name="btnAddSubmit" Content="提交表单" Click="btnAddSubmit_Click" Padding="5,2"/>
+            <Button x:Name="btnAddJavaScript" Content="JavaScript操作" Click="btnAddJavaScript_Click" Padding="5,2"/>
             <Separator/>
             <Button x:Name="btnRunAction" Content="执行选中操作" Click="btnRunAction_Click" Padding="5,2"/>
             <Button x:Name="btnRunAll" Content="执行全部操作" Click="btnRunAll_Click" Padding="5,2"/>
