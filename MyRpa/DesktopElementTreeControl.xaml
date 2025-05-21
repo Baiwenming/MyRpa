@@ -1,0 +1,79 @@
+﻿<UserControl x:Class="MyRpa.DesktopElementTreeControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:local="clr-namespace:MyRpa"
+             mc:Ignorable="d" 
+             d:DesignHeight="450" d:DesignWidth="800">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="200"/>
+        </Grid.RowDefinitions>
+
+        <!-- 应用程序信息 -->
+        <StackPanel Grid.Row="0" Margin="5">
+            <StackPanel Orientation="Horizontal" Margin="0,5,0,5">
+                <TextBlock Text="应用程序:" FontWeight="Bold" Width="80"/>
+                <TextBlock x:Name="txtProcessName" Text="未选择"/>
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" Margin="0,5,0,5">
+                <TextBlock Text="进程ID:" FontWeight="Bold" Width="80"/>
+                <TextBlock x:Name="txtProcessId" Text=""/>
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" Margin="0,5,0,5">
+                <TextBlock Text="窗口标题:" FontWeight="Bold" Width="80"/>
+                <TextBlock x:Name="txtWindowTitle" Text=""/>
+            </StackPanel>
+        </StackPanel>
+
+        <!-- 元素树 -->
+        <Grid Grid.Row="1" Margin="5">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <TextBlock Grid.Row="0" Text="应用程序元素结构:" FontWeight="Bold" Margin="0,0,0,5"/>
+
+            <TreeView x:Name="treeElements" Grid.Row="1"
+                     SelectedItemChanged="treeElements_SelectedItemChanged">
+                <TreeView.ItemTemplate>
+                    <HierarchicalDataTemplate ItemsSource="{Binding Children}">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="{Binding ElementType}" FontWeight="Bold" Margin="0,0,5,0"/>
+                            <TextBlock Text="{Binding ElementName}"/>
+                        </StackPanel>
+                    </HierarchicalDataTemplate>
+                </TreeView.ItemTemplate>
+                <TreeView.ItemContainerStyle>
+                    <Style TargetType="{x:Type TreeViewItem}">
+                        <Setter Property="IsExpanded" Value="False"/>
+                        <EventSetter Event="MouseDoubleClick" Handler="TreeViewItem_MouseDoubleClick"/>
+                    </Style>
+                </TreeView.ItemContainerStyle>
+            </TreeView>
+        </Grid>
+
+        <!-- 元素属性 -->
+        <Grid Grid.Row="2" Margin="5">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <TextBlock Grid.Row="0" Text="选中元素的属性:" FontWeight="Bold" Margin="0,0,0,5"/>
+
+            <ListView x:Name="lstProperties" Grid.Row="1">
+                <ListView.View>
+                    <GridView>
+                        <GridViewColumn Header="属性" Width="150" DisplayMemberBinding="{Binding Name}"/>
+                        <GridViewColumn Header="值" Width="400" DisplayMemberBinding="{Binding Value}"/>
+                    </GridView>
+                </ListView.View>
+            </ListView>
+        </Grid>
+    </Grid>
+</UserControl> 

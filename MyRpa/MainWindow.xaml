@@ -6,52 +6,103 @@
         xmlns:local="clr-namespace:MyRpa"
         xmlns:cefSharp="clr-namespace:CefSharp.Wpf;assembly=CefSharp.Wpf"
         mc:Ignorable="d"
-        Title="MyRpa - 自动化流程工具" Height="700" Width="1200">
+        Title="MyRpa - 自动化工具" Height="800" Width="1200">
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
-            <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <!-- 顶部导航工具栏 -->
-        <Grid Grid.Row="0" Height="40">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="Auto"/>
-                <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="Auto"/>
-            </Grid.ColumnDefinitions>
-            <Button x:Name="btnBack" Content="后退" Width="50" Margin="5" Click="btnBack_Click"/>
-            <DockPanel Grid.Column="1">
-                <TextBlock Text="网址：" VerticalAlignment="Center" Margin="5,0"/>
-                <TextBox x:Name="txtUrl" VerticalAlignment="Center" KeyDown="txtUrl_KeyDown"/>
-            </DockPanel>
-            <Button x:Name="btnGo" Grid.Column="2" Content="转到" Width="50" Margin="5" Click="btnGo_Click"/>
-        </Grid>
-        
-        <!-- 主内容区 -->
-        <Grid Grid.Row="1">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="Auto"/>
-                <ColumnDefinition Width="400"/>
-            </Grid.ColumnDefinitions>
-            
-            <!-- 浏览器区域 -->
-            <cefSharp:ChromiumWebBrowser x:Name="Browser" Grid.Column="0" Address="https://www.baidu.com" />
-            
-            <!-- 分隔条 -->
-            <GridSplitter Grid.Column="1" Width="5" HorizontalAlignment="Center" VerticalAlignment="Stretch"/>
-            
-            <!-- 工作台区域 -->
-            <ContentControl x:Name="workbenchContainer" Grid.Column="2" />
-        </Grid>
-        
-        <!-- 状态栏 -->
-        <StatusBar Grid.Row="2" Height="25">
-            <StatusBarItem>
-                <TextBlock x:Name="txtStatus" Text="就绪" />
-            </StatusBarItem>
-        </StatusBar>
+        <!-- 主菜单 -->
+        <Menu Grid.Row="0">
+            <MenuItem Header="文件">
+                <MenuItem Header="新建工作流" Click="NewWorkflow_Click"/>
+                <MenuItem Header="打开工作流" Click="OpenWorkflow_Click"/>
+                <MenuItem Header="保存工作流" Click="SaveWorkflow_Click"/>
+                <Separator/>
+                <MenuItem Header="退出" Click="Exit_Click"/>
+            </MenuItem>
+            <MenuItem Header="操作">
+                <MenuItem Header="执行当前工作流" Click="RunWorkflow_Click"/>
+                <MenuItem Header="停止执行" Click="StopWorkflow_Click"/>
+            </MenuItem>
+            <MenuItem Header="帮助">
+                <MenuItem Header="关于" Click="About_Click"/>
+            </MenuItem>
+        </Menu>
+
+        <!-- 主内容区域 - 使用TabControl分隔网页和桌面操作 -->
+        <TabControl Grid.Row="1">
+            <!-- 网页自动化页面 -->
+            <TabItem Header="网页自动化">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- 浏览器地址栏 -->
+                    <DockPanel Grid.Row="0" Margin="5">
+                        <Button x:Name="btnBack" Content="后退" DockPanel.Dock="Left" Click="btnBack_Click" Width="50" Margin="0,0,5,0"/>
+                        <Button x:Name="btnForward" Content="前进" DockPanel.Dock="Left" Click="btnForward_Click" Width="50" Margin="0,0,5,0"/>
+                        <Button x:Name="btnRefresh" Content="刷新" DockPanel.Dock="Left" Click="btnRefresh_Click" Width="50" Margin="0,0,5,0"/>
+                        <Button x:Name="btnNavigate" Content="转到" DockPanel.Dock="Right" Click="btnNavigate_Click" Width="50" Margin="5,0,0,0"/>
+                        <TextBox x:Name="txtUrl" KeyDown="txtUrl_KeyDown"/>
+                    </DockPanel>
+
+                    <!-- 浏览器和工作区 -->
+                    <Grid Grid.Row="1">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="400"/>
+                        </Grid.ColumnDefinitions>
+
+                        <!-- 浏览器区域 -->
+                        <DockPanel Grid.Column="0" x:Name="browserContainer"/>
+
+                        <!-- 工作区 -->
+                        <ContentControl x:Name="workbenchContainer" Grid.Column="1"/>
+                    </Grid>
+                </Grid>
+            </TabItem>
+
+            <!-- 桌面自动化页面 -->
+            <TabItem Header="桌面自动化">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="16.838"/>
+                        <ColumnDefinition Width="233.162"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- 左侧操作面板 -->
+                    <StackPanel Grid.Column="0" Margin="10,10,10,10" Grid.ColumnSpan="2">
+                        <GroupBox Header="桌面元素选择">
+                            <StackPanel Margin="5">
+                                <Button x:Name="btnSelectDesktopAppElement" Content="选择应用程序元素" 
+                                        Click="btnSelectDesktopAppElement_Click" Padding="5" Margin="0,5"/>
+                                <TextBlock Text="按住按钮选择元素，松开后获取元素所在应用程序的树状结构" 
+                                           TextWrapping="Wrap" Margin="0,5" FontStyle="Italic"/>
+                                <Button x:Name="btnSelectDesktopSingleElement" Content="选择单个桌面元素" 
+                                        Click="btnSelectDesktopSingleElement_Click" Padding="5" Margin="0,5"/>
+                            </StackPanel>
+                        </GroupBox>
+
+                        <GroupBox Header="桌面操作" Margin="0,10,0,0">
+                            <StackPanel Margin="5">
+                                <Button Content="添加鼠标点击" Click="btnAddMouseClick_Click" Padding="5" Margin="0,5"/>
+                                <Button Content="添加键盘输入" Click="btnAddKeyboardInput_Click" Padding="5" Margin="0,5"/>
+                                <Button Content="添加等待操作" Click="btnAddWait_Click" Padding="5" Margin="0,5"/>
+                                <Separator Margin="0,5"/>
+                                <Button Content="执行桌面操作" Click="btnRunDesktopActions_Click" Padding="5" Margin="0,5"/>
+                            </StackPanel>
+                        </GroupBox>
+                    </StackPanel>
+
+                    <!-- 元素树显示区域 -->
+                    <ContentControl x:Name="desktopElementTreeContainer" Grid.Column="2"/>
+                </Grid>
+            </TabItem>
+        </TabControl>
     </Grid>
 </Window>

@@ -64,13 +64,18 @@
       <SubType>Designer</SubType>
     </ApplicationDefinition>
     <Compile Include="DesktopElementInfo.cs" />
-    <Compile Include="ElementListItem.cs" />
     <Compile Include="DesktopElementSelector.cs" />
+    <Compile Include="DesktopElementTreeControl.xaml.cs" />
+    <Compile Include="ElementListItem.cs" />
     <Compile Include="ElementSelector.cs" />
     <Compile Include="WorkbenchControl.xaml.cs">
       <DependentUpon>WorkbenchControl.xaml</DependentUpon>
     </Compile>
     <Compile Include="WorkflowManager.cs" />
+    <Page Include="DesktopElementTreeControl.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
     <Page Include="MainWindow.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>

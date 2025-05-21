@@ -75,7 +75,11 @@ namespace MyRpa
             UpdateElementsList();
         }
         
-        
+        // 默认无参构造函数，用于XAML设计器
+        public WorkbenchControl()
+        {
+            InitializeComponent();
+        }
         
         // 桌面元素选择按钮点击事件
         private void btnSelectDesktopElement_Click(object sender, RoutedEventArgs e)
