@@ -13,6 +13,7 @@ namespace MyRpa
         private ChromiumWebBrowser _browser;
         private bool _isSelecting = false;
         public event EventHandler<ElementSelectedEventArgs> ElementSelected;
+        public event EventHandler SelectionCancelled;
         
         // 添加公共属性以检查是否正在选择元素
         public bool IsSelecting => _isSelecting;
@@ -44,6 +45,12 @@ namespace MyRpa
 
             // 执行停止选择的脚本
             ExecuteStopSelectionScript();
+            
+            // 触发选择取消事件
+            System.Windows.Application.Current.Dispatcher.Invoke(() =>
+            {
+                SelectionCancelled?.Invoke(this, EventArgs.Empty);
+            });
         }
 
         // 注入选择器脚本

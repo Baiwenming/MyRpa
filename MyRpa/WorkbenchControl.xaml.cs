@@ -23,6 +23,7 @@ namespace MyRpa
     {
         private ChromiumWebBrowser _browser;
         private ElementSelector _elementSelector;
+        private DesktopElementSelector _desktopElementSelector;
         private WorkflowManager _workflowManager;
         private BrowserAction _currentEditingAction;
         private ElementInfo _selectedElement;
@@ -30,31 +31,153 @@ namespace MyRpa
         // 已选择元素列表
         private List<ElementListItem> _selectedElements = new List<ElementListItem>();
         
+        // 当前选中的操作模式（网页/桌面）
+        private OperationMode _currentMode = OperationMode.Web;
+        
+        // 操作模式枚举
+        private enum OperationMode
+        {
+            Web,
+            Desktop
+        }
+        
         // 构造函数
         public WorkbenchControl(ChromiumWebBrowser browser)
         {
             InitializeComponent();
             
             _browser = browser;
+            
+            // 初始化网页元素选择器
             _elementSelector = new ElementSelector(_browser);
-            _workflowManager = new WorkflowManager(_browser);
-            
-            // 注册元素选择事件
             _elementSelector.ElementSelected += ElementSelector_ElementSelected;
+            _elementSelector.SelectionCancelled += ElementSelector_SelectionCancelled;
             
-            // 监听工作流事件
+            // 初始化桌面元素选择器
+            _desktopElementSelector = new DesktopElementSelector();
+            _desktopElementSelector.ElementSelected += DesktopElementSelector_ElementSelected;
+            _desktopElementSelector.SelectionCancelled += DesktopElementSelector_SelectionCancelled;
+            
+            // 初始化工作流管理器
+            _workflowManager = new WorkflowManager(_browser);
             _workflowManager.ActionStarted += WorkflowManager_ActionStarted;
             _workflowManager.ActionCompleted += WorkflowManager_ActionCompleted;
             _workflowManager.ActionFailed += WorkflowManager_ActionFailed;
+            
+            // 更新UI状态
+            UpdateElementSelectionButtons();
+            UpdateDesktopElementSelectionButtons();
             
             // 绑定操作列表数据源
             UpdateActionsList();
             
             // 初始化元素列表
             UpdateElementsList();
+        }
+        
+        
+        
+        // 桌面元素选择按钮点击事件
+        private void btnSelectDesktopElement_Click(object sender, RoutedEventArgs e)
+        {
+            StartDesktopElementSelection();
+        }
+        
+        // 停止桌面元素选择按钮点击事件
+        private void btnStopDesktopElementSelection_Click(object sender, RoutedEventArgs e)
+        {
+            StopDesktopElementSelection();
+        }
+        
+        // 开始桌面元素选择
+        private void StartDesktopElementSelection()
+        {
+            _desktopElementSelector.StartElementCapture();
+            UpdateDesktopElementSelectionButtons();
+        }
+        
+        // 停止桌面元素选择
+        private void StopDesktopElementSelection()
+        {
+            _desktopElementSelector.StopElementCapture();
+            UpdateDesktopElementSelectionButtons();
+        }
+        
+        // 更新桌面元素选择按钮状态
+        private void UpdateDesktopElementSelectionButtons()
+        {
+            // 检查当前是否在UI线程，如果不是，则使用Dispatcher
+            if (!CheckAccess())
+            {
+                Dispatcher.Invoke(UpdateDesktopElementSelectionButtons);
+                return;
+            }
             
-            // 初始化按钮状态
-            UpdateElementSelectionButtons();
+            // 直接更新XAML中定义的按钮状态
+            btnSelectDesktopElement.IsEnabled = !_desktopElementSelector.IsCapturing;
+            btnStopDesktopElementSelection.IsEnabled = _desktopElementSelector.IsCapturing;
+        }
+        
+        // 桌面元素选中事件处理
+        private void DesktopElementSelector_ElementSelected(object sender, DesktopElementSelectedEventArgs e)
+        {
+            // 将桌面元素添加到已选择元素列表
+            AddElementToSelectedList(e.SelectedElement);
+            
+            // 更新按钮状态
+            UpdateDesktopElementSelectionButtons();
+        }
+        
+        // 桌面元素选择取消事件处理
+        private void DesktopElementSelector_SelectionCancelled(object sender, EventArgs e)
+        {
+            // 更新按钮状态
+            UpdateDesktopElementSelectionButtons();
+        }
+        
+        // 将元素添加到选中列表
+        private void AddElementToSelectedList(ElementInfo element)
+        {
+            // 设置当前选中的元素
+            _selectedElement = element;
+            
+            // 添加到元素列表
+            var listItem = new ElementListItem
+            {
+                Element = element,
+                TagName = element.TagName,
+                DisplayText = element.ToString()
+            };
+            
+            _selectedElements.Add(listItem);
+            
+            // 更新UI
+            UpdateElementsList();
+            
+            // 如果当前正在编辑操作，自动填充元素
+            if (_currentEditingAction != null)
+            {
+                // 根据不同类型的操作设置目标元素
+                switch (_currentEditingAction)
+                {
+                    case ClickElementAction clickAction:
+                        clickAction.TargetElement = element;
+                        break;
+                    case InputTextAction inputAction:
+                        inputAction.TargetElement = element;
+                        break;
+                    case GetTextAction getTextAction:
+                        getTextAction.TargetElement = element;
+                        break;
+                    case SubmitFormAction submitAction:
+                        submitAction.FormElement = element;
+                        break;
+                    case ExecuteJavaScriptAction jsAction:
+                        jsAction.TargetElement = element;
+                        break;
+                }
+                UpdatePropertyPanel();
+            }
         }
         
         // 更新操作列表
@@ -113,7 +236,12 @@ namespace MyRpa
             }
             
             // 将选中的元素添加到元素列表
-            var elementItem = new ElementListItem(_selectedElement);
+            var elementItem = new ElementListItem
+            {
+                Element = _selectedElement,
+                TagName = _selectedElement.TagName,
+                DisplayText = _selectedElement.ToString()
+            };
             _selectedElements.Add(elementItem);
             
             // 更新元素列表显示
@@ -124,6 +252,20 @@ namespace MyRpa
             
             // 更新按钮状态
             UpdateElementSelectionButtons();
+            });
+        }
+        
+        // 网页元素选择取消事件处理
+        private void ElementSelector_SelectionCancelled(object sender, EventArgs e)
+        {
+            // 在UI线程上执行
+            Application.Current.Dispatcher.Invoke(() =>
+            {
+                // 更新按钮状态
+                UpdateElementSelectionButtons();
+                
+                // 可以显示一条消息通知用户选择已取消
+                Console.WriteLine("元素选择已取消");
             });
         }
         
@@ -309,15 +451,27 @@ namespace MyRpa
             
             var buttonPanel = new StackPanel { Orientation = Orientation.Horizontal };
             
-            var selectButton = new Button 
+            // 选择网页元素按钮
+            var selectWebButton = new Button 
             { 
-                Content = "新选择", 
+                Content = "选择网页元素", 
                 Padding = new Thickness(3, 0, 3, 0),
                 Margin = new Thickness(5, 0, 5, 0),
                 VerticalAlignment = VerticalAlignment.Center,
                 Tag = textBlock
             };
             
+            // 选择桌面元素按钮
+            var selectDesktopButton = new Button 
+            { 
+                Content = "选择桌面元素", 
+                Padding = new Thickness(3, 0, 3, 0),
+                Margin = new Thickness(5, 0, 5, 0),
+                VerticalAlignment = VerticalAlignment.Center,
+                Tag = textBlock
+            };
+            
+            // 从列表选择按钮
             var fromListButton = new Button
             {
                 Content = "从列表选择",
@@ -327,10 +481,12 @@ namespace MyRpa
                 Tag = textBlock
             };
             
-            selectButton.Click += ElementSelectButton_Click;
+            selectWebButton.Click += ElementSelectWebButton_Click;
+            selectDesktopButton.Click += ElementSelectDesktopButton_Click;
             fromListButton.Click += ElementFromListButton_Click;
             
-            buttonPanel.Children.Add(selectButton);
+            buttonPanel.Children.Add(selectWebButton);
+            buttonPanel.Children.Add(selectDesktopButton);
             buttonPanel.Children.Add(fromListButton);
             
             DockPanel.SetDock(buttonPanel, Dock.Right);
@@ -341,10 +497,16 @@ namespace MyRpa
             propertyPanel.Children.Add(container);
         }
         
-        // 元素选择按钮点击事件
-        private void ElementSelectButton_Click(object sender, RoutedEventArgs e)
+        // 网页元素选择按钮点击事件
+        private void ElementSelectWebButton_Click(object sender, RoutedEventArgs e)
         {
             _elementSelector.StartElementSelection();
+        }
+        
+        // 桌面元素选择按钮点击事件
+        private void ElementSelectDesktopButton_Click(object sender, RoutedEventArgs e)
+        {
+            _desktopElementSelector.StartElementCapture();
         }
         
         // 从列表选择元素按钮点击事件
@@ -860,6 +1022,49 @@ namespace MyRpa
             propertyPanel.Children.Add(container);
         }
         
+        // 执行桌面操作按钮点击事件处理程序
+        private async void btnRunDesktopAction_Click(object sender, RoutedEventArgs e)
+        {
+            // 重用现有的执行选中操作的逻辑
+            if (lstActions.SelectedItem is ActionListItem item)
+            {
+                try
+                {
+                    await _workflowManager.ExecuteActionAsync(item.Action);
+                    MessageBox.Show("桌面操作执行完成", "执行结果", MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"执行桌面操作失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+            }
+            else
+            {
+                MessageBox.Show("请先选择一个操作", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
+
+        // 执行全部桌面操作按钮点击事件处理程序
+        private async void btnRunAllDesktop_Click(object sender, RoutedEventArgs e)
+        {
+            // 重用现有的执行全部操作的逻辑
+            if (_workflowManager.Actions.Count == 0)
+            {
+                MessageBox.Show("没有可执行的桌面操作", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+            
+            try
+            {
+                await _workflowManager.ExecuteAllAsync();
+                MessageBox.Show("所有桌面操作执行完成", "执行结果", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"执行桌面工作流失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+        
         #endregion
     }
     
@@ -871,29 +1076,5 @@ namespace MyRpa
         public string ActionType { get; set; }
         public string Name { get; set; }
         public string Description { get; set; }
-    }
-    
-    // 元素列表项类
-    public class ElementListItem
-    {
-        public ElementInfo Element { get; set; }
-        public string TagName => Element.TagName;
-        public string DisplayText 
-        { 
-            get 
-            {
-                if (!string.IsNullOrEmpty(Element.Id))
-                    return $"#{Element.Id}";
-                else if (!string.IsNullOrEmpty(Element.Name))
-                    return $"[name='{Element.Name}']";
-                else
-                    return Element.XPath;
-            } 
-        }
-        
-        public ElementListItem(ElementInfo element)
-        {
-            Element = element;
-        }
     }
 }

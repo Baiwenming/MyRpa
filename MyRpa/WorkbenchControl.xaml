@@ -12,23 +12,37 @@
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
         
-        <!-- 工具栏 -->
-        <ToolBar Grid.Row="0">
-            <Button x:Name="btnSelectElement" Content="选择元素" Click="btnSelectElement_Click" Padding="5,2"/>
-            <Button x:Name="btnStopElementSelection" Content="停止选择元素" Click="btnStopElementSelection_Click" Padding="5,2"/>
-            <Separator/>
-            <Button x:Name="btnAddClick" Content="点击操作" Click="btnAddClick_Click" Padding="5,2"/>
-            <Button x:Name="btnAddInput" Content="输入操作" Click="btnAddInput_Click" Padding="5,2"/>
-            <Button x:Name="btnAddWait" Content="等待操作" Click="btnAddWait_Click" Padding="5,2"/>
-            <Button x:Name="btnAddSubmit" Content="提交表单" Click="btnAddSubmit_Click" Padding="5,2"/>
-            <Button x:Name="btnAddJavaScript" Content="JavaScript操作" Click="btnAddJavaScript_Click" Padding="5,2"/>
-            <Separator/>
-            <Button x:Name="btnRunAction" Content="执行选中操作" Click="btnRunAction_Click" Padding="5,2"/>
-            <Button x:Name="btnRunAll" Content="执行全部操作" Click="btnRunAll_Click" Padding="5,2"/>
-            <Separator/>
-            <Button x:Name="btnSave" Content="保存工作流" Click="btnSave_Click" Padding="5,2"/>
-            <Button x:Name="btnLoad" Content="加载工作流" Click="btnLoad_Click" Padding="5,2"/>
-        </ToolBar>
+        <!-- 使用TabControl分隔网页和桌面操作 -->
+        <TabControl Grid.Row="0">
+            <TabItem Header="网页操作">
+                <ToolBar>
+                    <Button x:Name="btnSelectElement" Content="选择网页元素" Click="btnSelectElement_Click" Padding="5,2,5,2"/>
+                    <Button x:Name="btnStopElementSelection" Content="停止选择网页元素" Click="btnStopElementSelection_Click" Padding="5,2,5,2"/>
+                    <Separator/>
+                    <Button x:Name="btnAddClick" Content="点击操作" Click="btnAddClick_Click" Padding="5,2,5,2"/>
+                    <Button x:Name="btnAddInput" Content="输入操作" Click="btnAddInput_Click" Padding="5,2,5,2"/>
+                    <Button x:Name="btnAddWait" Content="等待操作" Click="btnAddWait_Click" Padding="5,2,5,2"/>
+                    <Button x:Name="btnAddSubmit" Content="提交表单" Click="btnAddSubmit_Click" Padding="5,2,5,2"/>
+                    <Button x:Name="btnAddJavaScript" Content="JavaScript操作" Click="btnAddJavaScript_Click" Padding="5,2,5,2"/>
+                    <Separator/>
+                    <Button x:Name="btnRunAction" Content="执行选中操作" Click="btnRunAction_Click" Padding="5,2,5,2"/>
+                    <Button x:Name="btnRunAll" Content="执行全部操作" Click="btnRunAll_Click" Padding="5,2,5,2"/>
+                    <Separator/>
+                    <Button x:Name="btnSave" Content="保存工作流" Click="btnSave_Click" Padding="5,2,5,2"/>
+                    <Button x:Name="btnLoad" Content="加载工作流" Click="btnLoad_Click" Padding="5,2,5,2"/>
+                </ToolBar>
+            </TabItem>
+            <TabItem Header="桌面操作">
+                <ToolBar>
+                    <Button x:Name="btnSelectDesktopElement" Content="选择桌面元素" Click="btnSelectDesktopElement_Click" Padding="5,2,5,2"/>
+                    <Button x:Name="btnStopDesktopElementSelection" Content="停止选择桌面元素" Click="btnStopDesktopElementSelection_Click" Padding="5,2,5,2" IsEnabled="False"/>
+                    <Separator/>
+                    <!-- 桌面相关操作按钮可以在这里添加 -->
+                    <Button x:Name="btnRunDesktopAction" Content="执行桌面操作" Click="btnRunDesktopAction_Click" Padding="5,2,5,2"/>
+                    <Button x:Name="btnRunAllDesktop" Content="执行全部桌面操作" Click="btnRunAllDesktop_Click" Padding="5,2,5,2"/>
+                </ToolBar>
+            </TabItem>
+        </TabControl>
         
         <!-- 工作区 -->
         <Grid Grid.Row="1">
