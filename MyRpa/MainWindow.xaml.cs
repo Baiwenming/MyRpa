@@ -244,7 +244,7 @@ namespace MyRpa
         /// <summary>
         /// 关于对话框
         /// </summary>
-        private void About_Click(object sender, RoutedEventArgs e)
+        private void About_Click(object sender, RoutedEventArgs e) 
         {
             MessageBox.Show("MyRpa - 自动化工具\n版本: 1.0\n\n一个简单易用的自动化工具，支持网页和桌面应用程序自动化操作。", 
                            "关于", MessageBoxButton.OK, MessageBoxImage.Information);
@@ -371,6 +371,11 @@ namespace MyRpa
         {
             // 确保清理资源
             _browser?.Dispose();
+        }
+         
+        private void btnSelectDesktopAppElement_Click(object sender, RoutedEventArgs e)
+        {
+            _desktopElementSelector.StartElementCapture(true);
         }
     }
 }

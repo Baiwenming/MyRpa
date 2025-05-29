@@ -10,6 +10,8 @@ using System.Windows.Interop;
 using System.Windows.Media;
 using Point = System.Drawing.Point;
 using Color = System.Drawing.Color;
+using System.Collections.Generic;
+using System.Diagnostics;
 
 namespace MyRpa
 {
@@ -27,16 +29,37 @@ namespace MyRpa
     }
     
     /// <summary>
+    /// 应用程序选择事件参数
+    /// </summary>
+    public class DesktopApplicationSelectedEventArgs : EventArgs
+    {
+        public Process SelectedProcess { get; }
+        public AutomationElement RootElement { get; }
+        public string WindowTitle { get; }
+        
+        public DesktopApplicationSelectedEventArgs(Process process, AutomationElement rootElement, string windowTitle)
+        {
+            SelectedProcess = process;
+            RootElement = rootElement;
+            WindowTitle = windowTitle;
+        }
+    }
+    
+    /// <summary>
     /// 桌面元素选择器类
     /// </summary>
     public class DesktopElementSelector
     {
         // 事件定义
         public event EventHandler<DesktopElementSelectedEventArgs> ElementSelected;
+        public event EventHandler<DesktopApplicationSelectedEventArgs> ApplicationSelected;
         public event EventHandler SelectionCancelled;
         
         // 状态标志
         public bool IsCapturing { get; private set; }
+        
+        // 捕获模式标志
+        private bool _captureApplicationOnly = false;
         
         // 全局钩子处理
         private MouseHook _mouseHook;
@@ -49,9 +72,8 @@ namespace MyRpa
         private CancellationTokenSource _cancellationTokenSource;
         private Task _captureTask;
         
-        // AutomationElement缓存
-        private AutomationElement _lastElement;
-        private System.Windows.Point _lastPoint;
+        //// 保存原始鼠标样式
+        //private Cursor _originalCursor;
         
         public DesktopElementSelector()
         {
@@ -60,24 +82,26 @@ namespace MyRpa
             _keyboardHook = new KeyboardHook();
             
             // 绑定事件
-            _mouseHook.MouseMove += MouseHook_MouseMove;
-            _mouseHook.MouseDown += MouseHook_MouseDown;
+            _mouseHook.MouseUp += MouseHook_MouseUp;
             _keyboardHook.KeyDown += KeyboardHook_KeyDown;
         }
         
         /// <summary>
         /// 开始元素捕获
         /// </summary>
-        public void StartElementCapture()
+        /// <param name="captureApplicationOnly">是否只捕获应用程序窗口而不是具体元素</param>
+        public void StartElementCapture(bool captureApplicationOnly = false)
         {
             if (IsCapturing)
                 return;
-                
+            
+            // 设置捕获模式    
+            _captureApplicationOnly = captureApplicationOnly;
             IsCapturing = true;
             
-            // 创建高亮窗口
             System.Windows.Application.Current.Dispatcher.Invoke(() =>
             {
+                
                 _highlightWindow = new HighlightWindow();
                 _highlightWindow.Show();
             });
@@ -108,11 +132,12 @@ namespace MyRpa
             _mouseHook.Uninstall();
             _keyboardHook.Uninstall();
             
-            // 关闭高亮窗口
+            // 关闭高亮窗口并还原鼠标样式
             System.Windows.Application.Current.Dispatcher.Invoke(() =>
             {
                 _highlightWindow?.Close();
                 _highlightWindow = null;
+                
             });
             
             IsCapturing = false;
@@ -133,50 +158,20 @@ namespace MyRpa
         }
         
         /// <summary>
-        /// 处理鼠标移动
+        /// 处理鼠标释放
         /// </summary>
-        private void MouseHook_MouseMove(object sender, MouseEventArgs e)
-        {
-            if (!IsCapturing) return;
-            
-            try
-            {
-                // 获取鼠标位置下的元素
-                var element = GetElementFromPoint(e.X, e.Y);
-                if (element.Current.Name!=null) 
-                {
-                    Console.WriteLine(element.Current.Name);
-                }
-                if (element != null && _lastElement != element)
-                {
-                    _lastElement = element;
-                    _lastPoint = new System.Windows.Point(e.X, e.Y);
-                    
-                    // 更新高亮窗口
-                    UpdateHighlight(element);
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"鼠标移动处理错误: {ex.Message}");
-            }
-        }
-        
-        /// <summary>
-        /// 处理鼠标点击
-        /// </summary>
-        private void MouseHook_MouseDown(object sender, MouseEventArgs e)
+        private void MouseHook_MouseUp(object sender, MouseEventArgs e)
         {
             if (!IsCapturing || e.Button != MouseButtons.Left) return;
             
             try
             {
-                // 元素选择
+                // 获取鼠标位置下的元素
                 var element = GetElementFromPoint(e.X, e.Y);
                 if (element != null)
                 {
-                    // 提取信息并通知选中事件
-                    var elementInfo = ExtractElementInfo(element);
+                    // 获取最上层的窗口元素
+                    var windowElement = GetTopLevelWindow(element);
                     
                     // 停止捕获
                     StopElementCapture();
@@ -184,14 +179,80 @@ namespace MyRpa
                     // 在UI线程上触发事件
                     System.Windows.Application.Current.Dispatcher.Invoke(() =>
                     {
-                        ElementSelected?.Invoke(this, new DesktopElementSelectedEventArgs(elementInfo));
+                        if (_captureApplicationOnly)
+                        {
+                            // 只触发应用程序选择事件
+                            if (windowElement != null)
+                            {
+                                var process = GetProcessFromWindowElement(windowElement);
+                                string windowTitle = windowElement.Current.Name ?? string.Empty;
+                                
+                                ApplicationSelected?.Invoke(this, new DesktopApplicationSelectedEventArgs(
+                                    process, windowElement, windowTitle));
+                            }
+                        }
+                        else
+                        {
+                            // 普通模式：触发元素选择事件
+                            var elementInfo = ExtractElementInfo(element);
+                            ElementSelected?.Invoke(this, new DesktopElementSelectedEventArgs(elementInfo));
+                            
+                            // 同时触发应用程序选择事件
+                            if (windowElement != null)
+                            {
+                                var process = GetProcessFromWindowElement(windowElement);
+                                string windowTitle = windowElement.Current.Name ?? string.Empty;
+                                
+                                ApplicationSelected?.Invoke(this, new DesktopApplicationSelectedEventArgs(
+                                    process, windowElement, windowTitle));
+                            }
+                        }
                     });
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"鼠标点击处理错误: {ex.Message}");
+                Console.WriteLine($"鼠标释放处理错误: {ex.Message}");
             }
+        }
+        
+        /// <summary>
+        /// 获取最上层的窗口元素
+        /// </summary>
+        private AutomationElement GetTopLevelWindow(AutomationElement element)
+        {
+            try
+            {
+                // 获取元素所属的窗口句柄
+                var handle = element.Current.NativeWindowHandle;
+                if (handle == 0)
+                {
+                    // 如果没有窗口句柄，尝试获取父窗口
+                    var parent = TreeWalker.ControlViewWalker.GetParent(element);
+                    while (parent != null && parent != AutomationElement.RootElement)
+                    {
+                        handle = parent.Current.NativeWindowHandle;
+                        if (handle != 0)
+                        {
+                            element = parent;
+                            break;
+                        }
+                        parent = TreeWalker.ControlViewWalker.GetParent(parent);
+                    }
+                }
+                
+                // 如果找到了窗口句柄，获取对应的窗口元素
+                if (handle != 0)
+                {
+                    return AutomationElement.FromHandle(new IntPtr(handle));
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"获取顶层窗口错误: {ex.Message}");
+            }
+            
+            return null;
         }
         
         /// <summary>
@@ -316,6 +377,96 @@ namespace MyRpa
                 Console.WriteLine($"更新高亮错误: {ex.Message}");
             }
         }
+        
+        /// <summary>
+        /// 获取自动化元素的所有子元素
+        /// </summary>
+        /// <param name="parentElement">父元素</param>
+        /// <returns>子元素集合</returns>
+        public static List<AutomationElement> GetChildElements(AutomationElement parentElement)
+        {
+            var childElements = new List<AutomationElement>();
+            
+            if (parentElement == null)
+                return childElements;
+                
+            try
+            {
+                System.Windows.Automation.Condition condition = new System.Windows.Automation.PropertyCondition(
+                    AutomationElement.IsControlElementProperty, true);
+
+                // 查找所有子元素
+                AutomationElementCollection children = 
+                    parentElement.FindAll(TreeScope.Children, condition);
+                    
+                if (children != null)
+                {
+                    foreach (AutomationElement child in children)
+                    {
+                        childElements.Add(child);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"获取子元素出错: {ex.Message}");
+            }
+            
+            return childElements;
+        }
+        
+        /// <summary>
+        /// 从窗口元素获取进程
+        /// </summary>
+        private Process GetProcessFromWindowElement(AutomationElement windowElement)
+        {
+            try
+            {
+                if (windowElement != null)
+                {
+                    int processId = windowElement.Current.ProcessId;
+                    return Process.GetProcessById(processId);
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"获取进程信息错误: {ex.Message}");
+            }
+            
+            return null;
+        }
+        
+        /// <summary>
+        /// 选择应用程序窗口
+        /// </summary>
+        public void SelectApplication(AutomationElement windowElement)
+        {
+            if (windowElement == null) return;
+            
+            try
+            {
+                // 确保是窗口元素
+                if (windowElement.Current.ControlType != ControlType.Window &&
+                    windowElement.Current.ControlType != ControlType.Pane)
+                {
+                    // 尝试获取父窗口
+                    windowElement = GetRootElement(windowElement);
+                    if (windowElement == null) return;
+                }
+                
+                // 获取进程信息
+                var process = GetProcessFromWindowElement(windowElement);
+                string windowTitle = windowElement.Current.Name ?? string.Empty;
+                
+                // 触发应用程序选择事件
+                ApplicationSelected?.Invoke(this, new DesktopApplicationSelectedEventArgs(
+                    process, windowElement, windowTitle));
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"选择应用程序错误: {ex.Message}");
+            }
+        }
     }
     
     /// <summary>
@@ -370,8 +521,7 @@ namespace MyRpa
     /// </summary>
     public class MouseHook
     {
-        public event MouseEventHandler MouseMove;
-        public event MouseEventHandler MouseDown;
+        public event MouseEventHandler MouseUp;
         
         // 底层钩子
         private IntPtr _hookId = IntPtr.Zero;
@@ -402,11 +552,8 @@ namespace MyRpa
                 
                 switch ((int)wParam)
                 {
-                    case Win32Interop.WM_MOUSEMOVE:
-                        MouseMove?.Invoke(this, new MouseEventArgs(MouseButtons.None, 0, hookStruct.pt.x, hookStruct.pt.y, 0));
-                        break;
-                    case Win32Interop.WM_LBUTTONDOWN:
-                        MouseDown?.Invoke(this, new MouseEventArgs(MouseButtons.Left, 1, hookStruct.pt.x, hookStruct.pt.y, 0));
+                    case Win32Interop.WM_LBUTTONUP:
+                        MouseUp?.Invoke(this, new MouseEventArgs(MouseButtons.Left, 1, hookStruct.pt.x, hookStruct.pt.y, 0));
                         break;
                 }
             }
@@ -467,6 +614,7 @@ namespace MyRpa
         // Win32 常量
         public const int WM_MOUSEMOVE = 0x0200;
         public const int WM_LBUTTONDOWN = 0x0201;
+        public const int WM_LBUTTONUP = 0x0202;
         public const int WM_KEYDOWN = 0x0100;
         private const int GWLP_HWNDPARENT = -8;
         private const int GWL_EXSTYLE = -20;
